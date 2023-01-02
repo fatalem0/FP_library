@@ -120,13 +120,13 @@ sealed trait MyList[+A] {
    * The foldLeft function implemented via the foldRight function
    */
   def foldLeftViaFoldRight[B](z: B)(f: (A, B) => B): B =
-    this.reverse().foldLeft(z)((b, a) => f(a, b))
+    this.reverse().foldRight(z)((a, b) => f(a, b))
 
   /**
    * The foldRight function implemented via the foldLeft function
    */
   def foldRightViaFoldLeft[B](z: B)(f: (A, B) => B): B =
-    this.reverse().foldRight(z)((a, b) => f(a, b))
+    this.reverse().foldLeft(z)((a, b) => f(b, a))
 
 
   /**
@@ -148,6 +148,57 @@ sealed trait MyList[+A] {
 
     delimiting(this)
   }
+
+  /**
+   * Generalizes modifying each element in a MyList while maintaining the structure of the MyList
+   */
+  def map[B](f: A => B): MyList[B] = {
+    @tailrec
+    def go(l: MyList[A], resList: MyList[B] = Nil): MyList[B] = l match {
+      case Nil => resList
+      case Cons(x, xs) => go(xs, f(x) :: resList)
+    }
+
+    go(this).reverse()
+  }
+
+  /**
+   * Removes elements from a MyList unless they satisfy a given predicate
+   */
+  def filter(f: A => Boolean): MyList[A] = {
+    @tailrec
+    def go(l: MyList[A], resList: MyList[A] = Nil): MyList[A] = l match {
+      case Nil => resList
+      case Cons(x, xs) => if (f(x)) go(xs, x :: resList) else go(xs, resList)
+    }
+
+    go(this).reverse()
+  }
+
+  /**
+   * Works like the 'map', but will return a MyList[B] instead of a single result
+   */
+  def flatMap[B](f: A => MyList[B]): MyList[B] =
+    map(f).reverse().foldRightViaFoldLeft(MyList(): MyList[B])((el, acc) => acc.appendViaFoldRight(el))
+
+  /**
+   * The 'filter' method implementation via flatMap
+   */
+  def filterViaFlatMap(f: A => Boolean): MyList[A] = flatMap(el => if (f(el)) MyList(el) else Nil)
+
+  /**
+   * Applies a function to a pair of elements from two MyList and creates a new MyList
+   */
+  def zipWith[B, C](b: MyList[B], f: (A, B) => C): MyList[C] = {
+    @tailrec
+    def go(xs: MyList[A], ys: MyList[B], resList: MyList[C]): MyList[C] = (xs, ys) match {
+      case (Nil, _) => resList
+      case (_, Nil) => resList
+      case (Cons(x, xs), Cons(y, ys)) => go(xs, ys, f(x, y) :: resList)
+    }
+
+    go(this, b, Nil).reverse()
+  }
 }
 
 case object Nil extends MyList[Nothing]
@@ -167,6 +218,53 @@ object MyList {
    */
   def product2(ds: MyList[Double]): Double =
     ds.foldRight(1.0)(_ * _)
+
+  /**
+   * Transforms a MyList of integers by adding 1 to each element
+   */
+  def inc(l: MyList[Int]): MyList[Int] =
+    l.foldRightViaFoldLeft(Nil: MyList[Int])((el, acc) => Cons(el + 1, acc))
+
+  /**
+   * Turns each value in a MyList[Double] into a String
+   */
+  def convertToString(l: MyList[Double]): MyList[String] =
+    l.foldRightViaFoldLeft(Nil: MyList[String])((el, acc) => Cons(el.toString, acc))
+
+  /**
+   * Constructs a new MyList by adding corresponding elements
+   */
+  def sumLists(a: MyList[Int], b: MyList[Int]): MyList[Int] = {
+    @tailrec
+    def go(xs: MyList[Int], ys: MyList[Int], resList: MyList[Int]): MyList[Int] = (xs, ys) match {
+      case (Nil, _) => resList
+      case (_, Nil) => resList
+      case (Cons(x, xs), Cons(y, ys)) => go(xs, ys, Cons(x + y, resList))
+    }
+
+    go(a, b, Nil).reverse()
+  }
+
+  /**
+   * Checks whether a MyList contains another MyList as a subsequence
+   */
+  @tailrec
+  final def hasSubsequence(sup: MyList[Int], sub: MyList[Int]): Boolean = sup match {
+    case Nil => sub == Nil
+    case Cons(_, xs) =>
+      @tailrec
+      def go(list: MyList[Int], prefix: MyList[Int]): Boolean = (list, prefix) match {
+        case (_, Nil) => true
+        case (Cons(a, as), Cons(b, bs)) if a == b => go(as, bs)
+        case _ => false
+      }
+
+      if (go(sup, sub)) {
+        true
+      } else {
+        hasSubsequence(xs, sub)
+      }
+  }
 
   /**
    * Constructs a MyList instance
