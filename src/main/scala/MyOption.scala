@@ -66,7 +66,7 @@ object MyOption {
     mean(xs).flatMap(m => mean(xs.map(x => math.pow(x - m, 2))))
 
   /**
-   * Combines a MyList of MyOptions into one MyOption containing a list of all the Some values
+   * Combines a MyList of MyOptions into one MyOption containing a MyList of all the Some values
    * in the original MyList. If the original MyList contains None even once,
    * the result of the function should be None;
    * otherwise the result should be Some with a MyList of all the values.
