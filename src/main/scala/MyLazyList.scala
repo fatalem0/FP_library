@@ -228,6 +228,38 @@ sealed trait MyLazyList[+A] {
     case (Cons(h1, t1), Cons(h2, t2)) => Some(Some(h1()) -> Some(h2()) -> (t1() -> t2()))
     case _ => None
   }
+
+  /**
+   * Checks if one MyLazyList is a prefix of another
+   */
+  def startsWith[AA >: A](s: MyLazyList[AA]): Boolean = zipAll(s).takeWhile(_._2 != None).forAll {
+    case (a, b) => a == b
+  }
+
+  /**
+   * Returns the MyLazyList of sufixes of the input sequence, starting with the original MyLazyList
+   * @return
+   */
+  def tails: MyLazyList[MyLazyList[A]] = unfold(this) {
+    case Empty => None
+    case Cons(h, t) => Some((Cons(h, t), t()))
+  }.appendViaFoldRight(MyLazyList(empty))
+
+  /**
+   * Checks whether a MyLazyList contains a given subsequence
+   */
+  def hasSubsequence[AA >: A](s: MyLazyList[AA]): Boolean =
+    tails exists (_ startsWith s)
+
+  /**
+   * Generalizes tails, and returns a MyLazyList of the intermediate results
+   */
+  def scanRight[B](init: B)(f: (A, => B) => B): MyLazyList[B] =
+    foldRight(init -> MyLazyList(init)) { (a, b0) =>
+      lazy val b1 = b0
+      val b2 = f(a, b1._1)
+      (b2, cons(b2, b1._2))
+    }._2
 }
 
 case object Empty extends MyLazyList[Nothing]
